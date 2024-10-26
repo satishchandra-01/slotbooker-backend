@@ -2,6 +2,7 @@
 import express, { json } from 'express';
 import connectDB from '../config.js';
 import userRouter from './routes/user.js';
+import roomRouter from './routes/room.js'
 
 import cors from 'cors';
 
@@ -18,5 +19,6 @@ app.listen(PORT, () => {
 });
 
 app.use("/user", userRouter)
+app.use("/room", roomRouter)
 
 

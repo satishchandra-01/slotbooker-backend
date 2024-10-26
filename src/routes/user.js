@@ -31,7 +31,7 @@ userRouter.get('/test', async (req, res) => {
 })
 
 userRouter.post('/register', [...registerValidator], handleValidationErrors, async (req, res) => {
-    const { name, email, password, otp } = req.body;
+    const { name, email, password, otp, role } = req.body;
 
     try {
         const otpRecord = await Otp.findOne({ email }).sort({ createdAt: -1 });
@@ -52,7 +52,7 @@ userRouter.post('/register', [...registerValidator], handleValidationErrors, asy
         if (userExists) return res.status(400).json({ code: "user_registration_failed", error: 'User already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ name, email, password: hashedPassword });
+        const user = new User({ name, email, password: hashedPassword, role });
         await user.save();
         const savedUser = await User.findOne({email})
         const token = jwt.sign({ id: savedUser._id }, JWT_SECRET, { expiresIn: '2h' });
@@ -62,40 +62,8 @@ userRouter.post('/register', [...registerValidator], handleValidationErrors, asy
     }
 });
 
-userRouter.post('/reset/password', [...registerValidator], handleValidationErrors, async (req, res) => {
-    const { email, password, otp } = req.body;
-
-    try {
-        const otpRecord = await Otp.findOne({ email }).sort({ createdAt: -1 });
-
-        if (!otpRecord) {
-            return res.status(400).json({ code: "reset_password_failed", error: 'No OTP found for this email. Please request OTP again.' });
-        }
-
-        if (otpRecord.otp !== otp) {
-            return res.status(400).json({ code: "reset_password_failed", error: 'Invalid OTP.' });
-        }
-
-        if (otpRecord.otpExpires < Date.now()) {
-            return res.status(400).json({code: "reset_password_failed", error: 'Invalid Session. Please try again' });
-        }
-
-        const user = await User.findOne({ email });
-        if (!userExists) return res.status(400).json({ code: "reset_password_failed", error: 'User does not exists' });
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        user.password = hashedPassword
-
-        await user.save();
-        res.status(200).json({ code: "reset_password_success", message: 'Password reset successfully' });
-    } catch (error) {
-        res.status(500).json({ code: "reset_password_failed", error: error });
-    }
-});
-
 userRouter.post('/verify/email', async (req, res) => {
     const { email } = req.body;
-    console.log("req received ", req.body)
     try {
         const userExists = await User.findOne({ email });
         if(userExists) {
@@ -148,7 +116,6 @@ userRouter.post('/verify/otp', authenticateJWT, async (req, res) => {
 });
 
 userRouter.post('/verify', authenticateJWT, async (req, res) => {
-    console.log("req received :: ")
     const userId = req.userId;    
     const user = await User.findById(userId)
     if (!user) return res.status(400).json({ code: "user_verification_failed", error: 'Invalid user' });
@@ -216,5 +183,48 @@ userRouter.post('/verifyotp', async (req, res) => {
         res.status(500).json({ message: 'Error verifying OTP', error });
     }
 });
+
+userRouter.get('/password/reset/:email', async (req, res) => {
+    const email = req.params['email']
+    const link = `http://localhost:3000/reset/password/${email}`
+    try {
+        const mailOptions = {
+            from: 'slotbookers@gmail.com',
+            to: email,
+            subject: 'Reset Your Password',
+            text: `Please use the below link to reset your account password\n${link}`
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                return res.status(500).json({ message: 'Error sending password reset mail', error });
+            }
+            res.status(200).json({ message: 'Passowrd reset mail sent successfully' });
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error sending password reset mail', error });
+    }
+});
+
+userRouter.post('/password/reset/:email', async (req, res) => {
+    const email = req.params['email']
+    const { password } = req.body
+
+    try {
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword
+        await user.save();
+        res.status(200).json({ message: 'Password Reset Successfull' });
+    } catch (error) {
+        res.status(500).json({ message: 'Password Reset Failed', error });
+    }
+});
+
+
 
 export default userRouter;
