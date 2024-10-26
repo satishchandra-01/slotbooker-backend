@@ -21,7 +21,7 @@ const authenticateJWT = async (req, res, next) => {
         if (!user) {
             return res.status(401).json({ code: "authentication_failed", error: 'Failed to authenticate token' });
         }
-        req.role = decoded.role;
+        req.role = user.role;
         console.log("decoded :: ", decoded)
         next();
     });
