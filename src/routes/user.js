@@ -120,7 +120,7 @@ userRouter.post('/verify', authenticateJWT, async (req, res) => {
     const user = await User.findById(userId)
     if (!user) return res.status(400).json({ code: "user_verification_failed", error: 'Invalid user' });
     try {
-        res.status(200).json({ code: "user_verification_success", token: userId, name: user.name });
+        res.status(200).json({ code: "user_verification_success", token: userId, name: user.name ,role: user.role});
     } catch (error) {
         res.status(500).json({ code: "user_verification_failed", error: error });
     }

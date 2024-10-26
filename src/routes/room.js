@@ -18,6 +18,7 @@ roomRouter.post('/create', authenticateJWT, async (req, res) => {
     const role = req.role
     const userId = req.userId
     const {name, building_name, seats_count, available_seats} = req.body
+    console.log(role)
     if( role == "user" ){
         return res.status(401).json({code: "create_rooms_failed", error: 'Only admin can create rooms' });
     }
